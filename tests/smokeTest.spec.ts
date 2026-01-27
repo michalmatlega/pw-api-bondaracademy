@@ -1,6 +1,8 @@
 import { test } from "../utils/fixtures";
 import { expect } from "../utils/custom-expect";
 import { validateSchema } from "../utils/schema-validator";
+// @ts-ignore
+import articleRequestPayload from '../request-objects/POST-article.json';
 
 test('Get Articles', async ({ api }) => {
     const response = await api
@@ -26,17 +28,12 @@ test('Get Test Tags', async ({ api }) => {
 })
 
 test('Create and delete Articles', async ({ api }) => {
+    //const articleRequest = JSON.parse(JSON.stringify(articleRequestPayload));     //deep clone by nie modyfikowac obiektu dla pozostalych testow
+    //articleRequestPayload.article.title = 'This is title THREE';
     const expectedTitle = 'This is title THREE';
     const createArticleResponse = await api
         .path('articles')
-        .body({
-            "article": {
-                "title": expectedTitle,
-                "description": "This is about",
-                "body": "This is description",
-                "tagList": []
-        }
-    }).postRequest(201);
+        .body(articleRequestPayload).postRequest(201);
 
     await validateSchema('articles', 'POST_articles', createArticleResponse);
 
@@ -69,14 +66,7 @@ test('Create, update and delete Articles', async ({ api }) => {
     const expectedTitle = 'This is title THREE';
     const createArticleResponse = await api
         .path('articles')
-        .body({
-            "article": {
-                "title": expectedTitle,
-                "description": "This is about",
-                "body": "This is description",
-                "tagList": []
-            }
-        }).postRequest(201);
+        .body(articleRequestPayload).postRequest(201);
 
     expect(createArticleResponse.article.title).shouldEqual(expectedTitle);
     const slugId = createArticleResponse.article.slug;

@@ -1,8 +1,10 @@
-import { test } from "../utils/fixtures";
-import { expect } from "../utils/custom-expect";
-import { validateSchema } from "../utils/schema-validator";
+import { test } from "../../utils/fixtures";
+import { expect } from "../../utils/custom-expect";
+import { validateSchema } from "../../utils/schema-validator";
+import { faker } from '@faker-js/faker';
 // @ts-ignore
-import articleRequestPayload from '../request-objects/POST-article.json';
+import articleRequestPayload from '../../request-objects/POST-article.json';
+import {getNewRandomArticle} from "../../utils/data-generator";
 
 test('Get Articles', async ({ api }) => {
     const response = await api
@@ -10,14 +12,14 @@ test('Get Articles', async ({ api }) => {
         .params({limit: 10, offset: 0})
         .getRequest();
 
-    await validateSchema('articles', 'GET_articles', response);
+    await expect(response).shouldMatchSchema('articles', 'GET_articles');
 
     expect(response.articles.length).shouldBeLessThanOrEqual(10);
     expect(response.articlesCount).shouldEqual(10);
 });
 
 test('Get Test Tags', async ({ api }) => {
-    const response= await api
+    const response = await api
         .path('tags')
         .getRequest();
 
@@ -28,26 +30,22 @@ test('Get Test Tags', async ({ api }) => {
 })
 
 test('Create and delete Articles', async ({ api }) => {
-    //const articleRequest = JSON.parse(JSON.stringify(articleRequestPayload));     //deep clone by nie modyfikowac obiektu dla pozostalych testow
-    //articleRequestPayload.article.title = 'This is title THREE';
+    const articleRequest = getNewRandomArticle();
     const expectedTitle = 'This is title THREE';
     const createArticleResponse = await api
         .path('articles')
-        .body(articleRequestPayload).postRequest(201);
+        .body(articleRequest).postRequest(201);
 
-    await validateSchema('articles', 'POST_articles', createArticleResponse);
-
-    expect(createArticleResponse.article.title).shouldEqual(expectedTitle);
+    await expect(createArticleResponse).shouldMatchSchema('articles', 'POST_articles');
+    expect(createArticleResponse.article.title).shouldEqual(articleRequest.article.title);
     const slugId = createArticleResponse.article.slug;
 
     const articlesResponse = await api
         .path('articles')
         .params({limit: 10, offset: 0})
         .getRequest();
-    expect(articlesResponse.articles[0].title).shouldEqual(expectedTitle);
-
-    await validateSchema('articles', 'GET_articles', articlesResponse);
-
+    await expect(articlesResponse).shouldMatchSchema('articles', 'GET_articles');
+    expect(articlesResponse.articles[0].title).shouldEqual(articleRequest.article.title);
 
     await api
         .path(`articles/${slugId}`)
@@ -58,48 +56,44 @@ test('Create and delete Articles', async ({ api }) => {
         .params({limit: 10, offset: 0})
         .getRequest();
 
+    await expect(articlesResponseAfterDelete).shouldMatchSchema('articles', 'GET_articles');
     expect(articlesResponseAfterDelete.articles[0].title).not.shouldEqual(expectedTitle);
 
 })
 
 test('Create, update and delete Articles', async ({ api }) => {
-    const expectedTitle = 'This is title THREE';
+    const articleRequest = getNewRandomArticle();
     const createArticleResponse = await api
         .path('articles')
-        .body(articleRequestPayload).postRequest(201);
+        .body(articleRequest).postRequest(201);
 
-    expect(createArticleResponse.article.title).shouldEqual(expectedTitle);
+    await expect(createArticleResponse).shouldMatchSchema('articles', 'POST_articles');
+    expect(createArticleResponse.article.title).shouldEqual(articleRequest.article.title);
     const slugId = createArticleResponse.article.slug;
 
     const articlesResponse = await api
         .path('articles')
         .params({limit: 10, offset: 0})
         .getRequest();
-    expect(articlesResponse.articles[0].title).shouldEqual(expectedTitle);
+    await expect(articlesResponse).shouldMatchSchema('articles', 'GET_articles');
+    expect(articlesResponse.articles[0].title).shouldEqual(articleRequest.article.title);
 
 
-    let expectedUpdatedTitle = 'This is title THREE updated';
-
+    const articleRequestTwo = getNewRandomArticle();
     const updateResponse = await api
         .path(`articles/${slugId}`)
-        .body({
-            "article": {
-                "title": expectedUpdatedTitle,
-                "description": "This is about",
-                "body": "This is description",
-                "tagList": []
-            }
-        })
+        .body(articleRequestTwo)
         .putRequest();
-    await validateSchema('articles', 'PUT_articles', updateResponse);
 
+    await expect(updateResponse).shouldMatchSchema('articles', 'PUT_articles');
     const updatedSlugId = updateResponse.article.slug;
 
     const articlesAfterUpdateResponse = await api
         .path('articles')
         .params({limit: 10, offset: 0})
         .getRequest();
-    expect(articlesAfterUpdateResponse.articles[0].title).shouldEqual(expectedUpdatedTitle);
+    await expect(articlesAfterUpdateResponse).shouldMatchSchema('articles', 'GET_articles');
+    expect(articlesAfterUpdateResponse.articles[0].title).shouldEqual(articleRequestTwo.article.title);
 
     await api
         .path(`articles/${updatedSlugId}`)
@@ -109,6 +103,7 @@ test('Create, update and delete Articles', async ({ api }) => {
         .path('articles')
         .params({limit: 10, offset: 0})
         .getRequest();
-    expect(articlesResponseAfterDelete.articles[0].title).not.shouldEqual(expectedTitle);
+    await expect(articlesResponseAfterDelete).shouldMatchSchema('articles', 'GET_articles');
+    expect(articlesResponseAfterDelete.articles[0].title).not.shouldEqual(articleRequestTwo.article.title);
 
 })

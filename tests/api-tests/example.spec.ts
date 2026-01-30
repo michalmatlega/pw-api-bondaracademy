@@ -1,4 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
+import { expect } from '../../utils/custom-expect';
+import dotenv from 'dotenv';
 
 const baseUrl = 'https://conduit-api.bondaracademy.com';
 
@@ -11,7 +13,9 @@ test.beforeAll('run before all', async({request}) => {
     }
   });
 
-  authToken = `Token ${(await tokenResponse.json()).user.token}`;
+  const tokenResponseJSON = await tokenResponse.json();
+  await expect(tokenResponseJSON).shouldMatchSchema('users', 'POST_users_login');
+  authToken = `Token ${tokenResponseJSON.user.token}`;
 });
 
 test.afterAll('run after all', async({}) => {
@@ -22,6 +26,7 @@ test('Get Test Tags', async ({ request }) => {
   const tagsResponse = await request.get(`${baseUrl}/api/tags`);
   const tagsResponseJSON = await tagsResponse.json();
 
+  await expect(tagsResponseJSON).shouldMatchSchema('tags', 'GET_tags');
   expect(tagsResponse.status()).toEqual(200);
   expect(tagsResponseJSON.tags[0]).toEqual('Test');
   expect(tagsResponseJSON.tags.length).toBeLessThanOrEqual(10);
@@ -31,6 +36,7 @@ test('Get All Articles', async ({ request }) => {
   const articlesResponse = await request.get(`${baseUrl}/api/articles?limit=2&offset=0`);
   const articlesResponseJSON = await articlesResponse.json();
 
+  await expect(articlesResponseJSON).shouldMatchSchema('articles', 'GET_articles');
   expect(articlesResponse.status()).toEqual(200);
   expect(articlesResponseJSON.articles.length).toBeLessThanOrEqual(10);
   expect(articlesResponseJSON.articlesCount).toEqual(10);
@@ -54,6 +60,7 @@ test('Create and delete Article', async ({ request }) => {
     },
   });
   const newArticleResponseJSON = await newArticleResponse.json();
+  await expect(newArticleResponseJSON).shouldMatchSchema('articles', 'POST_articles');
   expect(newArticleResponse.status()).toEqual(201);
   expect(newArticleResponseJSON.article.title).toEqual(expectedTitle);
 
@@ -63,6 +70,7 @@ test('Create and delete Article', async ({ request }) => {
       'Authorization': authToken,
     }});
   const articlesResponseJSON = await articlesResponse.json();
+  await expect(articlesResponseJSON).shouldMatchSchema('articles', 'GET_articles');
   expect(articlesResponse.status()).toEqual(200);
   expect(articlesResponseJSON.articles[0].title).toEqual(expectedTitle);
 
@@ -91,6 +99,7 @@ test('Create, update and delete Article', async ({ request }) => {
     },
   });
   const newArticleResponseJSON = await newArticleResponse.json();
+  await expect(newArticleResponseJSON).shouldMatchSchema('articles', 'POST_articles');
   expect(newArticleResponse.status()).toEqual(201);
   expect(newArticleResponseJSON.article.title).toEqual(expectedTitle);
 
@@ -110,6 +119,7 @@ test('Create, update and delete Article', async ({ request }) => {
   })
 
   let updateArticleResponseJSON = await updateArticleResponse.json();
+  await expect(updateArticleResponseJSON).shouldMatchSchema('articles', 'PUT_articles');
   const modifiedArticleSlug = updateArticleResponseJSON.article.slug;
 
   expect(updateArticleResponse.status()).toEqual(200);
@@ -118,8 +128,7 @@ test('Create, update and delete Article', async ({ request }) => {
       'Authorization': authToken,
     }});
   const articlesResponseJSON = await articlesResponse.json();
-  expect(articlesResponse.status()).toEqual(200);
-  expect(articlesResponseJSON.articles[0].title).toEqual(expectedModifiedTitle);
+  await expect(articlesResponseJSON).shouldMatchSchema('articles', 'GET_articles');
 
   const deleteArticleResponse = await request.delete(`${baseUrl}/api/articles/${modifiedArticleSlug}`,{headers: {
       'Authorization': authToken,

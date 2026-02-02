@@ -37,12 +37,44 @@ async function loadSchema(schemaPath: string) {
 async function generateNewSchema(responseBody: object, schemaPath: string) {
     try {
         const generatedSchema = createSchema(responseBody);
-
-        //todo: add formats
+        
+        addDateTimeFormats(generatedSchema);
 
         await fs.mkdir(path.dirname(schemaPath), { recursive: true});
         await fs.writeFile(schemaPath, JSON.stringify(generatedSchema, null, 4));
     }catch(e) {
         throw new Error(`Failed to create schema file: ${e.message}`)
     }
+}
+
+function addDateTimeFormats(schema: any): void {
+    if (!schema || typeof schema !== 'object') return;
+
+    // Check if this is a properties object with createdAt or updatedAt
+    if (schema.properties) {
+        ['createdAt', 'updatedAt'].forEach(dateField => {
+            if (schema.properties[dateField] && schema.properties[dateField].type === 'string') {
+                schema.properties[dateField].format = 'date-time';
+            }
+        });
+    }
+
+    // Recursively process nested properties
+    if (schema.properties) {
+        Object.values(schema.properties).forEach((prop: any) => {
+            addDateTimeFormats(prop);
+        });
+    }
+
+    // Handle array items
+    if (schema.items) {
+        addDateTimeFormats(schema.items);
+    }
+
+    // Handle anyOf, oneOf, allOf
+    ['anyOf', 'oneOf', 'allOf'].forEach(key => {
+        if (Array.isArray(schema[key])) {
+            schema[key].forEach((item: any) => addDateTimeFormats(item));
+        }
+    });
 }
